@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">EncryptionApplication</string>
     <string name="auth_button_text">Please Authenticate</string>
+    <string name="lockscreen_test">LOCKED</string>
 </resources>
