@@ -15,7 +15,6 @@ import androidx.lifecycle.ProcessLifecycleOwner;
 public class EncryptionApplication extends Application {
     private boolean isLocked;
 
-
     @Override
     public void onCreate(){
         super.onCreate();
