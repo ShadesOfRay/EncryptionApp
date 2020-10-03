@@ -1,5 +1,6 @@
 package com.example.encryptionapplication;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 
@@ -16,11 +17,20 @@ public class BiometricLockActivity extends AppCompatActivity{
     private Executor executor;
     private BiometricPrompt bioPrompt;
     private BiometricPrompt.PromptInfo promptSkeleton;
+    private Intent intent;
+    private boolean fromLock;
+
+    private EncryptionApplication app;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_biometric);
+
+        app = (EncryptionApplication) getApplication();
+
+        intent = getIntent();
+        fromLock = intent.getBooleanExtra("fromListener", false);
 
         executor = ContextCompat.getMainExecutor(this);
         bioPrompt = new BiometricPrompt(BiometricLockActivity.this, executor, new BiometricPrompt.AuthenticationCallback() {
@@ -33,6 +43,8 @@ public class BiometricLockActivity extends AppCompatActivity{
             @Override
             public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
                 super.onAuthenticationSucceeded(result);
+                app.setUnlocked();
+                finish();
             }
 
             @Override
@@ -55,6 +67,14 @@ public class BiometricLockActivity extends AppCompatActivity{
         bioPrompt.authenticate(promptSkeleton);
     }
 
+    //return to home on back pressed
+    @Override
+    public void onBackPressed(){
+        Intent a = new Intent(Intent.ACTION_MAIN);
+        a.addCategory(Intent.CATEGORY_HOME);
+        a.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(a);
 
+    }
 
 }

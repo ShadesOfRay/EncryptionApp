@@ -2,4 +2,7 @@
     <string name="app_name">EncryptionApplication</string>
     <string name="auth_button_text">Please Authenticate</string>
     <string name="lockscreen_test">LOCKED</string>
+    <string name="file_select_encrypt">ENCRYPT A FILE</string>
+    <string name="file_select_decrypt">DECRYPT A FILE</string>
+    <string name="camera_encrypt">ENCRYPT FROM CAMERA</string>
 </resources>
