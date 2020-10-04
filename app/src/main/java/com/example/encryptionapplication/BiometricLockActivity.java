@@ -50,6 +50,7 @@ public class BiometricLockActivity extends AppCompatActivity{
             @Override
             public void onAuthenticationFailed() {
                 super.onAuthenticationFailed();
+                //TODO make the front camera take a photo when it fails lol
             }
         });
 

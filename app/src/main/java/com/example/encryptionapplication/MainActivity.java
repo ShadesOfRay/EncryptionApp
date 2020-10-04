@@ -1,24 +1,32 @@
 package com.example.encryptionapplication;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContract;
-import androidx.activity.result.contract.ActivityResultContracts;
+import android.Manifest;
+import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Environment;
+import android.provider.DocumentsContract;
+import android.provider.MediaStore;
+import android.provider.OpenableColumns;
+import android.view.View;
+import android.widget.Toast;
+
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-
-
-import android.Manifest;
-import android.content.ActivityNotFoundException;
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.os.Bundle;
-import android.provider.MediaStore;
-import android.view.View;
+import androidx.core.content.FileProvider;
 
 import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -27,20 +35,18 @@ public class MainActivity extends AppCompatActivity {
     //activity request codes
     private static final int CODE_GET_FILE = 0;
     private static final int CODE_GET_CAMERA_PICTURE = 1;
+    private static final int CODE_GET_ENCRYPTED_FILE = 2;
 
     //permission codes
     private static final int CODE_READ_STORAGE_PERMISSION = 0;
-    private static final int CODE_WRITE_STORAGE_PERMISSION = 0;
-    private static final int CODE_CAMERA_PERMISSION = 1;
-    /*
-    private ActivityResultLauncher<String> permissionRequester = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
-        if (isGranted) {
-            goToEncrypt();
-        }
-        else {
-            //ask for a redo lol
-        }
-    });*/
+    private static final int CODE_WRITE_STORAGE_PERMISSION = 1;
+    private static final int CODE_CAMERA_PERMISSION = 2;
+
+    //shared preferences
+    private SharedPreferences prefs;
+    private SharedPreferences.Editor prefEditor;
+    private final String encryptedList = "ListOfEncryptedApps";
+    private String tempPhotoLocation = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +54,10 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         app = (EncryptionApplication) getApplication();
+
+        //used to store the list of photos encrypted by this app
+        prefs = getSharedPreferences(encryptedList, Activity.MODE_PRIVATE);
+        prefEditor = prefs.edit();
 
         //go to ask for the finger print
         Intent check_bio = new Intent(this, BiometricLockActivity.class);
@@ -58,16 +68,43 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         System.out.println("wow it worked *******************");
 
+        if (resultCode != RESULT_OK){
+            return;
+        }
+
+        switch (requestCode){
+            //not gonna separate in case there have to be differences later
+            case CODE_GET_FILE:
+                goToEncrypt(data.getData());
+                break;
+            case CODE_GET_CAMERA_PICTURE:
+                File temp = new File(tempPhotoLocation);
+                Uri tempUri = Uri.fromFile(temp);
+                goToEncrypt(tempUri);
+                break;
+            case CODE_GET_ENCRYPTED_FILE:
+                goToDecrypt(data.getData());
+                break;
+        }
+
         super.onActivityResult(requestCode, resultCode, data);
     }
 
     //asks a file browser for a file to encrypt
     public void encryptFile(View view){
         //ask for permissions
-        if (permissionGranted(getApplicationContext(), Manifest.permission.READ_EXTERNAL_STORAGE)) {
+        if (permissionGranted(getApplicationContext(), Manifest.permission.READ_EXTERNAL_STORAGE) &&
+                permissionGranted(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             //System.out.println("working!");
             fromIntent = true;
-            Intent getFile = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            //configures the intent to get a file
+            Intent getFile = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            getFile.setType("image/*");
+            getFile.putExtra(DocumentsContract.EXTRA_INITIAL_URI, getApplicationContext().getFilesDir());
+            if (getFile.resolveActivity(getPackageManager()) == null){
+                System.out.println("no viable file manager");
+                Toast.makeText(getApplicationContext(), "No viable file manager found", Toast.LENGTH_SHORT).show();
+            }
             try {
                 startActivityForResult(getFile, CODE_GET_FILE);
             } catch (ActivityNotFoundException e){
@@ -76,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
         else {
             System.out.println("no permission :(");
             //permissionRequester.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-            String[] temp = {Manifest.permission.READ_EXTERNAL_STORAGE};
+            String[] temp = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
             ActivityCompat.requestPermissions(this, temp, CODE_READ_STORAGE_PERMISSION);
         }
     }
@@ -88,10 +125,18 @@ public class MainActivity extends AppCompatActivity {
             //System.out.println("working!");
             //camera intent
             fromIntent = true;
+            File photoFile = null;
             Intent useCameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            System.out.println(getExternalFilesDir(Environment.DIRECTORY_PICTURES));
             try {
+                photoFile = createTempFile();
+                Uri photoURI = FileProvider.getUriForFile(this,"com.example.encryptionapplication.fileprovider", photoFile);
+
+                useCameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
                 startActivityForResult(useCameraIntent, CODE_GET_CAMERA_PICTURE);
-            } catch (ActivityNotFoundException e){
+            } catch (Exception e){
+                System.out.println("something went wrong bucko");
+                e.printStackTrace();
             }
         }
         else {
@@ -104,15 +149,86 @@ public class MainActivity extends AppCompatActivity {
 
     //asks a file browser for a file to decrypt
     public void decryptFile(View view){
-
+        //ask for permissions
+        if (permissionGranted(getApplicationContext(), Manifest.permission.READ_EXTERNAL_STORAGE) &&
+                permissionGranted(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+            //System.out.println("working!");
+            fromIntent = true;
+            //configures the intent to get a file
+            Intent getFile = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            getFile.setType("image/*");
+            getFile.putExtra(DocumentsContract.EXTRA_INITIAL_URI, getApplicationContext().getFilesDir());
+            //check if there is a real file picker
+            if (getFile.resolveActivity(getPackageManager()) == null){
+                System.out.println("no viable file manager");
+                Toast.makeText(getApplicationContext(), "No viable file manager found", Toast.LENGTH_SHORT).show();
+            }
+            try {
+                startActivityForResult(getFile, CODE_GET_FILE);
+            } catch (ActivityNotFoundException e){
+                System.out.println("something went wrong");
+            }
+        }
+        else {
+            System.out.println("no permission :(");
+            //permissionRequester.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            String[] temp = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+            ActivityCompat.requestPermissions(this, temp, CODE_READ_STORAGE_PERMISSION);
+        }
     }
 
-    private void goToEncrypt(File file){
+    //start the activity to encrypt a file
+    //parse all the necessary data
+    private void goToEncrypt(Uri uri){
         System.out.println("going to encrypt now");
+
+        Cursor cursor = this.getContentResolver().query(uri, null, null, null, null, null);
+        String filename = "";
+        String newName = "";
+        try {
+            //this will be false
+            if (cursor != null && cursor.moveToFirst()){
+                filename = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+                System.out.println("file name is " + filename);
+                newName = filename + "-encrypted";
+                prefEditor.putBoolean(newName, true);
+
+            } else {
+                newName = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + "-encrypted";
+            }
+
+            encryptImage(newName, uri);
+
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+
     }
 
-    public boolean permissionGranted(Context context, String permission){
+    //start the activity to decrypt a file
+    private void goToDecrypt(Uri uri){
+
+    }
+
+    private boolean permissionGranted(Context context, String permission){
         return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void encryptImage(String filename, Uri uri){
+
+    }
+
+
+
+    private File createTempFile() throws IOException {
+        String title = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        File storageLocation = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(title,".jpg", storageLocation);
+
+        tempPhotoLocation = image.getAbsolutePath();
+        return image;
     }
 
     @Override
