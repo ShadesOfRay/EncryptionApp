@@ -1,4 +1,4 @@
-package com.example.encryptionapplication;
+package com.bishopwang.photoencrypter;
 
 import android.content.ContentResolver;
 import android.content.SharedPreferences;
@@ -8,21 +8,14 @@ import android.security.keystore.KeyProperties;
 import android.util.Base64;
 
 import java.io.File;
-import java.io.FileInputStream;
 
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.security.AlgorithmParameters;
-import java.security.Key;
 import java.security.KeyStore;
-import java.security.NoSuchAlgorithmException;
-import java.util.Enumeration;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.IvParameterSpec;
 
 public class EncryptionHelper {
 

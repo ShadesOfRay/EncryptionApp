@@ -1,11 +1,8 @@
-package com.example.encryptionapplication;
+package com.bishopwang.photoencrypter;
 
 import android.Manifest;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
-import android.content.BroadcastReceiver;
-import android.content.ContentResolver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -28,11 +25,7 @@ import androidx.core.content.FileProvider;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.security.KeyStore;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -154,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
             System.out.println(getExternalFilesDir(Environment.DIRECTORY_PICTURES));
             try {
                 photoFile = createTempFile();
-                Uri photoURI = FileProvider.getUriForFile(this,"com.example.encryptionapplication.fileprovider", photoFile);
+                Uri photoURI = FileProvider.getUriForFile(this,"com.bishopwang.photoencrypter.fileprovider", photoFile);
 
                 useCameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
                 startActivityForResult(useCameraIntent, CODE_GET_CAMERA_PICTURE);

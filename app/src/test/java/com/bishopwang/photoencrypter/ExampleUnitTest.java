@@ -1,4 +1,4 @@
-package com.example.encryptionapplication;
+package com.bishopwang.photoencrypter;
 
 import org.junit.Test;
 

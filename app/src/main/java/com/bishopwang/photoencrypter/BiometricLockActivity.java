@@ -1,4 +1,4 @@
-package com.example.encryptionapplication;
+package com.bishopwang.photoencrypter;
 import android.content.Intent;
 
 import android.hardware.biometrics.BiometricManager;
