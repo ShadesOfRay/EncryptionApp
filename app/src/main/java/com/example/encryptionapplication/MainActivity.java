@@ -24,7 +24,12 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.security.KeyStore;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -42,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int CODE_WRITE_STORAGE_PERMISSION = 1;
     private static final int CODE_CAMERA_PERMISSION = 2;
 
+
     //shared preferences
     private SharedPreferences prefs;
     private SharedPreferences.Editor prefEditor;
@@ -54,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         app = (EncryptionApplication) getApplication();
+
 
         //used to store the list of photos encrypted by this app
         prefs = getSharedPreferences(encryptedList, Activity.MODE_PRIVATE);
@@ -156,15 +163,15 @@ public class MainActivity extends AppCompatActivity {
             fromIntent = true;
             //configures the intent to get a file
             Intent getFile = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            getFile.setType("image/*");
-            getFile.putExtra(DocumentsContract.EXTRA_INITIAL_URI, getApplicationContext().getFilesDir());
+            getFile.setType("*/*");
+            getFile.putExtra(DocumentsContract.EXTRA_INITIAL_URI, getApplicationContext().getExternalFilesDir(null));
             //check if there is a real file picker
             if (getFile.resolveActivity(getPackageManager()) == null){
                 System.out.println("no viable file manager");
                 Toast.makeText(getApplicationContext(), "No viable file manager found", Toast.LENGTH_SHORT).show();
             }
             try {
-                startActivityForResult(getFile, CODE_GET_FILE);
+                startActivityForResult(getFile, CODE_GET_ENCRYPTED_FILE);
             } catch (ActivityNotFoundException e){
                 System.out.println("something went wrong");
             }
@@ -192,11 +199,14 @@ public class MainActivity extends AppCompatActivity {
                 System.out.println("file name is " + filename);
                 newName = filename + "-encrypted";
                 prefEditor.putBoolean(newName, true);
+                System.out.println("What was entered into prefs: "+ newName);
 
             } else {
                 newName = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + "-encrypted";
+                //do this later now
+                //prefEditor.putBoolean(newName, true);
             }
-
+            //prefEditor.commit();
             encryptImage(newName, uri);
 
         } finally {
@@ -208,7 +218,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //start the activity to decrypt a file
-    private void goToDecrypt(Uri uri){
+    private void goToDecrypt(Uri uri) {
+        //check if the file exists in the shared preferences
+        Cursor cursor = this.getContentResolver().query(uri, null, null, null, null, null);
+        String filename = "";
+        String realName = "";
+        try {
+            //this will be false
+            if (cursor != null && cursor.moveToFirst()){
+                filename = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+                realName = filename.substring(0, filename.length() - 4);
+                if (prefs.contains(realName)) {
+                    decryptImage(realName, uri);
+                }
+                else {
+                    Toast.makeText(getApplicationContext(), "Not an encrypted file", Toast.LENGTH_SHORT).show();
+                }
+                System.out.println(uri);
+
+            }
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
 
     }
 
@@ -217,7 +250,37 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void encryptImage(String filename, Uri uri){
+        byte[] output = EncryptionHelper.encryptGivenFile(filename, uri, getContentResolver(), prefEditor);
+        try {
+            System.out.println("got to writing the output");
+            System.out.println(getApplicationContext().getFilesDir()+  "/" + filename + ".png");
+            File outPath = getApplicationContext().getExternalFilesDir(null);
+            System.out.println(output.length);
 
+            File outputFile = new File(outPath, filename + ".txt");
+
+            FileOutputStream writer = new FileOutputStream(outputFile);
+            writer.write(output);
+            writer.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void decryptImage(String filename, Uri uri){
+        byte[] output = EncryptionHelper.decryptGivenFile(filename, uri, getContentResolver(), prefs.getString(filename, ""));
+        try {
+            File outPath = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+            File outputFile = new File(outPath, filename + ".png");
+
+            FileOutputStream writer = new FileOutputStream(outputFile);
+            writer.write(output);
+            writer.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 
