@@ -29,7 +29,9 @@
             android:noHistory="true">
         </activity>
 
-        <activity android:name=".ShareActivity" android:noHistory="true">
+        <activity android:name=".ShareActivity" android:noHistory="true"
+            android:exported="true"
+            android:permission="android.permission.WRITE_EXTERNAL_STORAGE">
             <intent-filter>
                 <action android:name="android.intent.action.SEND"/>
                 <data android:mimeType="image/*" />
