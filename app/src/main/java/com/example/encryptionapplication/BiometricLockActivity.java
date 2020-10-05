@@ -1,8 +1,10 @@
 package com.example.encryptionapplication;
-
 import android.content.Intent;
+
+import android.hardware.biometrics.BiometricManager;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -10,6 +12,7 @@ import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 
 import java.util.concurrent.Executor;
+
 
 public class BiometricLockActivity extends AppCompatActivity{
 
@@ -26,13 +29,22 @@ public class BiometricLockActivity extends AppCompatActivity{
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_biometric);
-
         app = (EncryptionApplication) getApplication();
 
         intent = getIntent();
         fromLock = intent.getBooleanExtra("fromListener", false);
 
         executor = ContextCompat.getMainExecutor(this);
+
+        androidx.biometric.BiometricManager biometricManager = androidx.biometric.BiometricManager.from(this);
+        switch(biometricManager.canAuthenticate()) {
+            case BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED:
+                Toast toast = Toast.makeText(getApplicationContext(),
+                        "User does not have a fingerprint registered. You must have a fingerprint registered to use this app",
+                        Toast.LENGTH_LONG);
+                toast.show();
+                break;
+        }
         bioPrompt = new BiometricPrompt(BiometricLockActivity.this, executor, new BiometricPrompt.AuthenticationCallback() {
             @Override
             public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {

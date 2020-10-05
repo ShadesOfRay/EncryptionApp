@@ -8,6 +8,7 @@
 
     <Button
         android:id="@+id/file_encrypt_button"
+        style="@style/Widget.AppCompat.Button"
         android:layout_width="115dp"
         android:layout_height="115dp"
         android:layout_marginStart="56dp"
