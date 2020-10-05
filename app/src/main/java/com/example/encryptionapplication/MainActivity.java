@@ -3,6 +3,9 @@ package com.example.encryptionapplication;
 import android.Manifest;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -41,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int CODE_GET_FILE = 0;
     private static final int CODE_GET_CAMERA_PICTURE = 1;
     private static final int CODE_GET_ENCRYPTED_FILE = 2;
+    private static final int CODE_ENCODE_FROM_SHARE = 3;
 
     //permission codes
     private static final int CODE_READ_STORAGE_PERMISSION = 0;
@@ -61,14 +65,23 @@ public class MainActivity extends AppCompatActivity {
 
         app = (EncryptionApplication) getApplication();
 
+        Intent intent = getIntent();
 
         //used to store the list of photos encrypted by this app
         prefs = getSharedPreferences(encryptedList, Activity.MODE_PRIVATE);
         prefEditor = prefs.edit();
 
-        //go to ask for the finger print
-        Intent check_bio = new Intent(this, BiometricLockActivity.class);
-        startActivity(check_bio);
+        if (intent.getBooleanExtra("skipPick", false)){
+            tempPhotoLocation = null;
+            goToEncrypt(intent.getData());
+        }
+        else {
+            //go to ask for the finger print
+            Intent check_bio = new Intent(this, BiometricLockActivity.class);
+            //if (intent.getData() != null) {
+            startActivity(check_bio);
+            //}
+        }
     }
 
     @Override
@@ -82,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
         switch (requestCode){
             //not gonna separate in case there have to be differences later
             case CODE_GET_FILE:
+                tempPhotoLocation = null;
                 goToEncrypt(data.getData());
                 break;
             case CODE_GET_CAMERA_PICTURE:
@@ -91,6 +105,9 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case CODE_GET_ENCRYPTED_FILE:
                 goToDecrypt(data.getData());
+                break;
+            case CODE_ENCODE_FROM_SHARE:
+                goToEncrypt(data.getData());
                 break;
         }
 
@@ -186,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
 
     //start the activity to encrypt a file
     //parse all the necessary data
-    private void goToEncrypt(Uri uri){
+    public void goToEncrypt(Uri uri){
         System.out.println("going to encrypt now");
 
         Cursor cursor = this.getContentResolver().query(uri, null, null, null, null, null);
@@ -249,7 +266,7 @@ public class MainActivity extends AppCompatActivity {
         return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED;
     }
 
-    private void encryptImage(String filename, Uri uri){
+    public void encryptImage(String filename, Uri uri){
         byte[] output = EncryptionHelper.encryptGivenFile(filename, uri, getContentResolver(), prefEditor);
         try {
             System.out.println("got to writing the output");
@@ -262,6 +279,16 @@ public class MainActivity extends AppCompatActivity {
             FileOutputStream writer = new FileOutputStream(outputFile);
             writer.write(output);
             writer.close();
+
+            Toast.makeText(getApplicationContext(), "Encrypted", Toast.LENGTH_SHORT).show();
+
+            if (tempPhotoLocation != null) {
+                File toDelete = new File(tempPhotoLocation);
+                toDelete.delete();
+            }
+            else {
+                DocumentsContract.deleteDocument(getApplication().getContentResolver(), uri);
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -278,9 +305,15 @@ public class MainActivity extends AppCompatActivity {
             FileOutputStream writer = new FileOutputStream(outputFile);
             writer.write(output);
             writer.close();
+
+            Toast.makeText(getApplicationContext(), "Decrypted!", Toast.LENGTH_SHORT).show();
+
+            DocumentsContract.deleteDocument(getApplication().getContentResolver(), uri);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
+
     }
 
 

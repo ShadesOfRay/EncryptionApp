@@ -68,6 +68,8 @@ public class EncryptionHelper {
             editor.commit();
             encryptedOut = cipher.doFinal(byteString);
 
+            img.delete();
+
 
         } catch (Exception e){
             e.printStackTrace();
@@ -94,6 +96,8 @@ public class EncryptionHelper {
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.DECRYPT_MODE, keyStore.getKey(id,null), new GCMParameterSpec(128,ivBytes));
             decryptedOut = cipher.doFinal(byteString);
+
+            keyStore.deleteEntry(id);
 
         } catch (Exception e){
             e.printStackTrace();
